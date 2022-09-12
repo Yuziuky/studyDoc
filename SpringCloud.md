@@ -18,7 +18,7 @@
 
 ## SpringCloud组件停更及替换
 
-![image](./cloud-imagaes/image.5g6chrwarzs0.webp)
+![image.5g6chrwarzs0](cloud-imagaes/image.5g6chrwarzs0.png)
 
 # 注册中心-Eureka
 
@@ -29,7 +29,7 @@ Eureka采用C-S架构，分为Eureka-server和Eureka-client，并且Eureka-clien
 * Eureka-client：应用启动后会将信息注册到server。每个一段时间（默认30秒）向server发送发送心跳，证明当前服务可用。
 * Eureka-server：提供服务注册服务，各节点启动后会在server注册，server存储所有可用服务节点信息。90秒没收到节点心跳，将节点移除
 
-![image-20220830225106318](./cloud-imagaes/eurek架构.png)
+![image-20220830225106318](cloud-imagaes/image-20220830225106318.png)
 
 ## 配置文件
 
@@ -125,7 +125,7 @@ eureka:
 
 启动后访问http://localhost:7000/
 
-![image-20220831224734405](./cloud-imagaes/eureka启动.png)
+![image-20220831224734405](cloud-imagaes/image-20220831224734405.png)
 
 ### 集群
 
@@ -169,7 +169,7 @@ eureka:
       defaultZone: http://localhost:7001/eureka/
 ```
 
-![image-20220903175956360](./cloud-imagaes/eureka集群.png)
+![image-20220903175956360](cloud-imagaes/image-20220903175956360.png)
 
 ### Eureka-Client
 
@@ -210,7 +210,7 @@ eureka:
 
 4. 启动后
 
-![image-20220905212006737](./cloud-imagaes/eurekaConsumer.png)
+![image-20220905212006737](cloud-imagaes/image-20220905212006737.png)
 
 ### 服务发现
 
@@ -260,7 +260,7 @@ private DiscoveryClient discoveryClient;
 </dependency>
 ```
 
-![image-20220907220046356](../images/ZK启动注意事项.png)
+![image-20220907220046356](cloud-imagaes/image-20220907220046356.png)
 
 该依赖的版本需与安装的zookeeper版本一致
 
