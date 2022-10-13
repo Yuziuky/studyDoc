@@ -249,8 +249,6 @@ private DiscoveryClient discoveryClient;
 
 可通过https://downloads.apache.org/zookeeper/ 下载zookeeper，然后安装到服务器上。
 
-
-
 ## 案例
 
 1. 引入依赖
@@ -460,4 +458,323 @@ public interface TestService {
 @FeignClient的value属性对应服务提供者的application.name
 
 ## 进阶
+
+
+
+# Hystrix
+
+由于网络或者自身原因，微服务不能保证服务百分百可用。若单个服务出现问题，那调用该服务时会出现延迟甚至调用失败的情况。同时，不断地调用该服务会增加服务器地负担，当负担过重，会导致服务崩溃。
+
+开发者很难避免因某些因素而导致的服务之间依赖调用失败，但是尽可能在调用失败时减少或避免对调用方带来的影响
+
+## 介绍
+
+Hystrix是根据断路器模式而建造的。当某个服务发生故障后，通过断路器的故障监控，向调用方返回一个符合预期的服务降级处理，而不是长时间等待或返回调用方无法处理的异常，避免调用方线程不会被长时间不必要的占用。
+
+![img](cloud-imagaes/hystrix)
+
+对于服务器容错来说就是保护服务消费者。
+
+* 服务降级：当服务不可用或者出现问题时设置一个备选方案，避免长时间等待
+* 服务熔断：达到设置的最大服务访问量时，拒绝请求，然后调用服务降级方法返回友好提示
+* 服务限流：达到最大服务请求时，拒绝请求。
+
+## 案例
+
+1. 引入依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+    <version>2.2.10.RELEASE</version>
+</dependency>
+```
+
+2. 启动类注解
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+@EnableHystrix
+public class ProviderHystrixApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(ProviderHystrixApplication.class, args);
+    }
+}
+```
+
+@EnableCircuitBreaker已被弃用，可使用@EnableHystrix开启Hystrix
+
+3. 使用@HystrixCommand
+
+```java
+@HystrixCommand(
+    fallbackMethod = "fallbackMethod",
+)
+public String useProvider_TimeOut() {
+    try {
+        TimeUnit.MILLISECONDS.sleep(3000);
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+    return "线程池:  " + Thread.currentThread().getName() + " service time out ";
+}
+
+public String fallbackMethod() {
+    return "系统繁忙或者运行报错，请稍后再试";
+}
+```
+
+fallbackMethod参数对应的是服务降级方法的方法名，服务降级方法需与被@HystrixCommand标记的方法有同样的入参。
+
+### 服务熔断
+
+```java
+@HystrixCommand(
+    fallbackMethod = "breakMethod",
+    commandProperties = {
+        @HystrixProperty(name = "circuitBreaker.enabled", value = "true"),
+        @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold", value = "20"),
+        @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds", value = "10000"),
+        @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage", value = "60")
+    }
+)
+```
+
+* circuitBreaker.enabled：开启断路器
+* circuitBreaker.requestVolumeThreshold： 在最近的时间窗口内，请求数量需达到阈值才会开启断路器。默认为20，10秒内该请求数量需达到20次。
+* circuitBreaker.sleepWindowInMilliseconds：时间窗口，默认是最近10秒。
+* circuitBreaker.errorThresholdPercentage：错误百分比阈值。默认是50%，当请求总数超过阈值，且有50%的请求出现异常，就会开启断路器
+* execution.isolation.thread.timeoutInMilliseconds：请求超时时间
+
+断路器开启或关闭条件：
+
+* 条件1：请求数量达到阈值（默认10秒20个请求）
+* 条件2：失败率达到设置的百分比时（默认10秒50%请求失败）
+* 两个条件都满足则会打开断路器
+* 断路器开启后不会call服务提供方的方法，而是直接调用服务降级方法
+* 一段时间后（默认5秒），断路器进入半开状态，会让其中一个请求call到服务提供者。若成功，断路器关闭；失败，继续开启。
+
+### 全局服务降级
+
+```java
+@DefaultProperties(defaultFallback = "")
+```
+
+使用该注解在controller上，该controller中被@HystrixCommand标记的方法会默认设置defaultFallback参数指向的服务降级方法，若@HystrixCommand注解上设置了fallbackMethod参数，则会优先调用fallbackMethod指向的服务降级函数
+
+
+
+# 服务网关-GateWay
+
+基于Spring5构建，能够实现响应式非阻塞式的Api，支持长连接，能够更好的整合Spring体系的产品，依赖SpringBoot-WebFlux，WebFlux框架底层则使用了高性能的Reactor模式通信框架Netty
+
+![spring_cloud_gateway_diagram](cloud-imagaes/spring_cloud_gateway_diagram.png)
+
+## 三大核心概念
+
+### 路由（Route）
+
+是构建网关的基本模块，是由ID，目标URL，一系列的断言和过滤器组成，如果断言为true，则匹配该路由
+
+### 断言（Predicate）
+
+开发人员可以匹配HTTP请求中的所有内容，如果请求与断言相匹配则进行路由。
+
+假设转发uri为localhost：8888，gateway服务器uri为localhost:9002
+
+| 规则    | 实例                                                         | 说明                                                         |
+| ------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Path    | - Path=/gate/，/rule/                                        | 当请求路径为gate、rule开头时，转发到localhost：8888服务器上  |
+| Before  | \- Before=2017-01-20T17:42:47.789-07:00[America/Denver]      | 在某个时间（2017-01-20T17:42:47.789-07:00）之前的请求才会被转发到 |
+| After   | \- After=2017-01-20T17:42:47.789-07:00[America/Denver]       | 在某个时间之后的请求才会被转发                               |
+| Between | \- Between=2017-01-20T17:42:47.789-07:00[America/Denver],2017-01-21T17:42:47.789-07:00[America/Denver] | 在某个时间段之间的才会被转发                                 |
+| Cookie  | \- Cookie=username,zzyy                                      | 匹配cookie。cookie中必须有username=zzyy才能访问。其中cookie的值支持正则 |
+| Header  | \- Header=X-Request-Id, \d+                                  | 请求头，和cookie用法类似                                     |
+| Host    | \- Host=www.hd123.com                                        | 根据host地址匹配                                             |
+| Method  | \- Method=GET                                                | 只有GET方法才会匹配转发请求                                  |
+| Query   | -Query=token                                                 | 根据参数匹配，请求中需有token参数                            |
+
+
+
+### 过滤器(Filter)
+
+指的是spring框架中GatewayFileter的实例，使用过滤器，可以在**请求被路由前或者之后**对请求进行修改.
+
+假设转发uri为localhost：8888，gateway服务器uri为localhost:9002
+
+|      | 实例                                    | 说明                                                         |
+| ---- | --------------------------------------- | ------------------------------------------------------------ |
+|      | - AddRequestHeader=X-Request-Foo, Bar   | 通过配置name和value可以增加请求的header                      |
+|      | - AddRequestParameter=foo, bar          | 通过配置name和value可以增加请求的参数                        |
+|      | - AddResponseHeader=X-Response-Foo, Bar | 对匹配的请求，响应返回时会额外添加X-Response-Foo:Bar的header返回 |
+
+GatewayFilter Factories有34个过滤器，详情参考官网：
+
+https://docs.spring.io/spring-cloud-gateway/docs/current/reference/html/#gatewayfilter-factories
+
+Global Filters有9个全局过滤器：
+
+https://docs.spring.io/spring-cloud-gateway/docs/current/reference/html/#global-filters
+
+## 案例
+
+引入依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-gateway</artifactId>
+</dependency>
+```
+
+### 路由配置
+
+1. 配置文件配置
+
+```yaml
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery: #开启从注册中心动态创建路由的功能，利用微服务名进行路由
+        locator:
+          enabled: true
+      routes:
+        - id: openFeign_consumer  #路由ID，无规则但要求唯一，建议配合服务名
+          uri: http://localhost:8006 
+          predicates:  #断言
+            - Path=/consumer/hello
+```
+
+2. 配置类配置
+
+```java
+@Configuration
+public class GateWayRoutes {
+    @Bean
+    public RouteLocator customerRoutes(RouteLocatorBuilder builder){
+        RouteLocatorBuilder.Builder routes=builder.routes();
+        //lambda表达式
+        routes.route(p -> p
+                .path("/consumer/providerPort")
+                .uri("http://localhost:8006")
+        ).build();
+        return routes.build();
+    }
+}
+```
+
+### 过滤器
+
+1.配置文件配置
+
+```yaml
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+      routes:
+        - id: openFeign_consumer
+          uri: http://localhost:8006
+          predicates:
+            - Path=/consumer/hello
+          filters:
+            - AddRequestParameter=foo, bar
+```
+
+2.配置类配置
+
+```java
+@Bean
+public RouteLocator customerRoutes(RouteLocatorBuilder builder){
+    RouteLocatorBuilder.Builder routes=builder.routes();
+    //lambda表达式
+    routes.route(p -> p
+                 .query("id")
+                 .and()
+                 .path("/consumer/providerPort")
+                 .filters(f->f.addRequestHeader("Foo","test"))
+                 .uri("http://localhost:8006")
+                ).build();
+    return routes.build();
+}
+```
+
+3.自定义全局过滤器
+
+自定义过滤器需实现org.springframework.cloud.gateway.filter.GlobalFilter类和org.springframework.core.Ordered类
+
+```java
+@Component
+public class CustomGlobalFilter implements GlobalFilter, Ordered {
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        //ServerWebExchange中
+        String id=exchange.getRequest().getQueryParams().getFirst("id");
+        if (id==null){
+            exchange.getResponse().setStatusCode(HttpStatus.NOT_ACCEPTABLE);
+            return exchange.getResponse().setComplete();
+        }
+        return chain.filter(exchange);
+    }
+
+    @Override
+    public int getOrder() {
+        return 0;
+    }
+}
+```
+
+## 配置中心-config
+
+### 微服务架构下配置文件的问题
+
+1. 配置文件会随着微服务增加而增多，且分布在每个微服务中。当修改一个相同的配置时需一个个去修改
+2. 手动配置不同环境下各个微服务的配置文件，比较困难
+3. 修改配置文件后需要重新启动服务，对正在运行的服务不友好
+
+### Spring Cloud Config
+
+Spring Cloud Config 分为config server和config client两种角色。
+
+我们需将配置文件放在Git Repository里面，然后config server会从Git Repository（默认Git，也可使用svn、mysql、本地文件系统等）中读取配置文件，config client再从config server中拉取配置文件的内容
+
+注：Spring Cloud Config没有可视化的操作界面，配置修改后也不是实时生效的（config server更新了，client没有更新），需要重启或去刷新。
+
+<img src="cloud-imagaes/spring_cloud_config_diagram-1665587146314.png" alt="spring_cloud_config_diagram" style="zoom:80%;" />
+
+### 案例
+
+1.添加依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-config-server</artifactId>
+</dependency>
+```
+
+2.启动类注解
+
+```java
+@SpringBootApplication
+@EnableConfigServer
+public class ConfigServerApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(ConfigServerApplication.class, args);
+    }
+
+}
+```
 
