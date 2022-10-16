@@ -756,6 +756,8 @@ Spring Cloud Config 分为config server和config client两种角色。
 
 ### 案例
 
+#### 配置config-server
+
 1.添加依赖
 
 ```xml
@@ -778,6 +780,100 @@ public class ConfigServerApplication {
 }
 ```
 
+3.配置文件
+
+```yaml
+server:
+  port: 3344
+
+spring:
+  application:
+    name: cloud-config-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://gitee.com/cx_link_3679/cloud-config-test.git
+          #仓库分支
+          default-label: master
+          #查找的文件路径，若寻找不到配置文件会到uri中配置的根目录下寻找
+          search-paths:
+            - cloud-config-consumer
+          username: 
+          password: 
+```
+
+![image-20221016155235640](cloud-imagaes/image-20221016155235640.png)
+
+#### 配置config-client
+
+1.添加依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-config</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-bootstrap</artifactId>
+</dependency>
+```
+
+Spring Cloud 新版本默认将 Bootstrap 禁用，需要将 spring-cloud-starter-bootstrap 依赖引入到工程中。否则会报错org.springframework.cloud.commons.ConfigDataMissingEnvironmentPostProcessor$ImportException: No spring.config.import set
+
+2.启动类注解
+
+无相关注解
+
+
+
+3.配置文件
+
+新建bootstrap.yml文件
+
+```yaml
+spring:
+  application:
+    name: cloud-config-consumer
+  cloud:
+    config:
+      uri: http://localhost:3344/
+      label: master
+```
+
+http 访问 config 配置中心配置文件的 url 形式
+
+* /{application}/{profile}[/{label}]
+* /{application}-{profile}.yml
+* /{label}/{application}-{profile}.yml
+* /{application}-{profile}.properties
+* /{label}/{application}-{profile}.properties
+
+其中application指的是项目名称spring.application.name
+
+profile指的是配置文件环境spring.cloud.config.profile
+
+4.测试
+
+controller：
+
+```Java
+@RestController
+@RequestMapping("properties")
+public class NameController {
+    @Value("${name}")
+    private String name;
+
+    @GetMapping("name")
+    public String getName(){
+        return name;
+    }
+}
+```
+
+![image-20221016202639186](cloud-imagaes/image-20221016202639186.png)
+
 
 
 ## 消息总线-Bus
@@ -794,7 +890,7 @@ Spring Cloud Bus是在Spring Cloud Stream基础之上再次进行抽象封装，
 
 #### 动态刷新全局广播配置。
 
-![img](D:\Bryan\studyDoc\cloud-imagaes\abe9512b6eedb53430011da412985658.png)
+![img](cloud-imagaes/abe9512b6eedb53430011da412985658.png)
 
 Bus 结合Config和Actuator。
 
@@ -811,7 +907,28 @@ Bus 结合Config和Actuator。
 
 `ConfigClient`实例都监听`MQ`中同一个`topic`(默认是`springCloudBus`)。当一个服务刷新数据的时候，它会把这个信息放入到`Topic`中，这样其它监听同一`Topic`的服务就能得到通知，然后去更新自身的配置。
 
+引入依赖：
 
+给config-server添加依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-bus-amqp</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-actuator</artifactId>
+</dependency>
+```
+
+配置文件：
+
+添加RabbitMQ配置及暴露刷新配置的Actuator端点：
+
+```yaml
+
+```
 
 
 
@@ -848,3 +965,10 @@ Spring Coud Stream则是进行消息中间件与系统耦合。Stream通过抽�
 #### Sink-消息监听通道接口
 
 当从消息中间件中接收到一个待处理消息时，该接口将负责把消息数据反序列化为Java对象，然后交由业务所定义的具体业务处理方法进行处理。
+
+
+
+# Nacos
+
+
+
