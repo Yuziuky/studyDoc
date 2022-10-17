@@ -970,5 +970,177 @@ Spring Coud Stream则是进行消息中间件与系统耦合。Stream通过抽�
 
 # Nacos
 
+Nacos 致力于帮助您发现、配置和管理微服务。Nacos 提供了一组简单易用的特性集，帮助您快速实现动态服务发现、服务配置、服务元数据及流量管理。(来自官网)
 
+特性：
+
+* 服务发现和服务健康监测
+* 动态配置服务
+* 动态 DNS 服务
+* 服务及其元数据管理
+* .......
+
+# Nacos注册中心
+
+Nacos注册中心分为server与client，server采用Java编写，为client提供注册发现服务与配置服务。而client可以用多语言实现，client与微服务嵌套在一起，nacos提供sdk和openApi，如果没有sdk也可以根据openApi手动写服务注册与发现和配置拉取的逻辑。
+
+## 案例
+
+1.安装nacos
+
+2.创建client
+
+* 引入依赖
+
+```xml
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+
+* 配置文件
+
+```yaml
+server:
+  port: 9001
+
+spring:
+  application:
+    name: nacos-payment-provider
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848 #配置Nacos地址
+
+#actuator端口暴露
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+```
+
+* 启动类
+
+```java
+@EnableDiscoveryClient
+```
+
+## 负载均衡
+
+
+
+# Nacos配置中心
+
+Nacos 提供用于存储配置和其他元数据的 key/value 存储，为分布式系统中的外部化配置提供服务器端和客户端支持。使用 Spring Cloud Alibaba Nacos Config，可以在 Nacos Server 集中管理Spring Cloud 应用的外部属性配置。
+
+## 概念
+
+* **命名空间（Namespace）**
+  * 用于进行租户粒度的配置隔离。不同的命名空间下，可以存在相同的 Group 或 Data ID 的配置
+  * 常用场景之一是不同环境的配置的区分隔离，例如开发测试环境和生产环境的资源（如数据库配置、限流阈值、降级开关）隔离等
+  * 在没有指定 Namespace 的情况下(spring.cloud.nacos.config.namespace)，默认使用 public 命名空间
+  * Namespace 的设计就是用来进行资源隔离的
+* **配置组（Group）**
+  * 通过一个有意义的字符串（如 ABTest 中的实验组、对照组）对配置集进行分组，从而区分 Data ID 相同的配置集
+  * 没有明确指定 `spring.cloud.nacos.config.group` 配置的情况下， 默认使用的是 DEFAULT_GROUP
+* **配置ID（Data ID）**
+  * 某个配置集的 ID，用于划分系统的配置集
+  * Data ID 尽量保障全局唯一
+* **配置集**:可理解为一个配置文件
+
+## 案例
+
+1.引入依赖
+
+```xml
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+</dependency>
+```
+
+2.配置文件
+
+创建bootstrapt.yml配置文件
+
+```yaml
+server:
+  port: 3377
+
+spring:
+  application:
+    name: nacos-config-client
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848 #服务注册中心地址
+      config:
+        server-addr: localhost:8848 #配置中心地址
+        file-extension: yaml #指定yaml格式的配置
+        group: DEV_GROUP
+        namespace: 912eccb8-4d1d-43a0-80c5-0dc6ca5805f6
+```
+
+
+
+# Sentinel
+
+Sentinel以流量为切入点，从流量控制、流量路由、熔断降级、系统自适应过载保护、热点流量防护等多个维度保护服务的稳定性。
+
+主要特性：
+
+![](cloud-imagaes/sentinal.png)
+
+Sentinel 分为两个部分:
+
+- 核心库（Java 客户端）不依赖任何框架/库，能够运行于所有 Java 运行时环境，同时对 Dubbo / Spring Cloud 等框架也有较好的支持。
+- 控制台（Dashboard）基于 Spring Boot 开发，打包后可以直接运行，不需要额外的 Tomcat 等应用容器。
+
+## 安装sentinel控制台
+
+下载页面：https://github.com/alibaba/Sentinel/releases
+
+启动命令：
+
+```
+java -Dserver.port=8080 -Dcsp.sentinel.dashboard.server=localhost:8080 -Dproject.name=sentinel-dashboard -jar sentinel-dashboard.jar
+```
+
+其中 `-Dserver.port=8080` 用于指定 Sentinel 控制台端口为 `8080`。
+
+账号密码都是sentinel
+
+
+
+## 流控规则-方法级别
+
+### 流控模式
+
+* 直接
+* 关联
+* 链路
+
+### 阈值类型
+
+1. **QPS**-每秒请求数量，有以下三个流控效果
+
+   * 快速失败
+
+   * Warm up--预热/冷启动方式
+
+   * 排队等待--控制请求通过的间隔时间，也即是让请求以均匀的速度通过，对应的是漏桶算法。
+
+2. 线程数
+   * 无流控效果，只有流控模式
+   * 当调用该api的线程数量达到阈值，就开始限流
+
+
+
+### 熔断降级规则
 
