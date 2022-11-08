@@ -42,4 +42,10 @@ public class OrderService {
         Order newOrder=orderRepository.save(order);
         return newOrder;
     }
+    
+    public void payOrder(Order order){
+        //扣减库存
+        
+        //扣减余额
+    }
 }
