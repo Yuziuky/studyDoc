@@ -992,6 +992,8 @@ nacos 直接双击打开的时集群模式，未配置的话会报错（Unable t
 
 单机模式启动进入cmd:startup.cmd -m standalone
 
+账号密码都是nacos
+
 2.创建client
 
 * 引入依赖
@@ -1011,15 +1013,15 @@ nacos 直接双击打开的时集群模式，未配置的话会报错（Unable t
 
 ```yaml
 server:
-  port: 9001
-
+  port: 8010
 spring:
   application:
-    name: nacos-payment-provider
+    name: nacos-client
   cloud:
     nacos:
       discovery:
-        server-addr: localhost:8848 #配置Nacos地址
+        server-addr: localhost:8848  #配置Nacos地址
+        group: public
 
 #actuator端口暴露
 management:
@@ -1035,9 +1037,7 @@ management:
 @EnableDiscoveryClient
 ```
 
-## 负载均衡
-
-
+![image-20221024205117558](cloud-imagaes/image-20221024205117558.png)
 
 # Nacos配置中心
 
@@ -1056,6 +1056,7 @@ Nacos 提供用于存储配置和其他元数据的 key/value 存储，为分布
 * **配置ID（Data ID）**
   * 某个配置集的 ID，用于划分系统的配置集
   * Data ID 尽量保障全局唯一
+  * 通常使用{spring.application.name}.{file-extension:properties}来绑定项目的配置文件信息
 * **配置集**:可理解为一个配置文件
 
 ## 案例
@@ -1067,16 +1068,24 @@ Nacos 提供用于存储配置和其他元数据的 key/value 存储，为分布
     <groupId>com.alibaba.cloud</groupId>
     <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
 </dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-bootstrap</artifactId>
+</dependency>
 ```
 
 2.配置文件
 
-创建bootstrapt.yml配置文件
+使用nacos作为配置中心时，需要创建一个**bootstrap.yaml**和**application.yaml**两个配置文件，**bootstrap.yaml**的优先级高于**application.yaml**，加载时实现加载**bootstrap.yaml**中的相关配置。
+
+创建bootstrapt.yml配置文件：
+
+注意：
+
+* **必须使用 bootstrap 配置文件来配置Nacos Server 地址**
+* **当你使用域名的方式来访问 Nacos 时，`spring.cloud.nacos.config.server-addr` 配置的方式为 `域名:port`。**
 
 ```yaml
-server:
-  port: 3377
-
 spring:
   application:
     name: nacos-config-client
@@ -1086,10 +1095,20 @@ spring:
         server-addr: localhost:8848 #服务注册中心地址
       config:
         server-addr: localhost:8848 #配置中心地址
-        file-extension: yaml #指定yaml格式的配置
+        file-extension: yaml #指定yaml格式的配置，同时也是dataId的后缀
         group: DEV_GROUP
         namespace: 912eccb8-4d1d-43a0-80c5-0dc6ca5805f6
+        refresh:
+          enabled: true #是否开启动态刷新
 ```
+
+nacos新增配置：
+
+![image-20221024221722888](cloud-imagaes/image-20221024221722888.png)
+
+注：若区分不同环境，可使用dataId为{spring.application.name}-{profile}.{file-extension:properties}的基础配置。{spring.profiles.active} 当通过配置文件来指定时必须放在 bootstrap.properties 文件中
+
+<img src="cloud-imagaes/image-20221024221756350.png" alt="image-20221024221756350" style="zoom:50%;" />
 
 
 

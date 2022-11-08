@@ -1,0 +1,21 @@
+server:
+  port: 8010
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+      routes:
+        - id: openFeign_consumer
+          uri: http://localhost:8006
+          predicates:
+            - Path=/consumer/hello
+          filters:
+            - AddRequestParameter=foo, bar

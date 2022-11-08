@@ -1,0 +1,9 @@
+server:
+  port: 8005
+spring:
+  application:
+    name: email-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
