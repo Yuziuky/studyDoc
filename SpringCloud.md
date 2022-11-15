@@ -959,13 +959,13 @@ Spring Coud Stream则是进行消息中间件与系统耦合。Stream通过抽�
 ### Binder-消息绑定器
 
 通过定义绑定器作为中间层，实现了应用程序与具体消息中间件细节之间的隔离，向应用程序暴露统一的消息通道，使应用程序不需要考虑与各种不同的消息中间件的对接。当需要升级或者更改不同的消息中间件时，应用程序只需要更换对应的绑定器即可，而不需要修改任何应用逻辑。
+用于与消息中间件集成，生成binding。不同的消息中间件使用不同的binder：Kafka-KafkaMessageChannelBinder, RabbitMQ-RabbitMessageChannelBinder, RocketMQ-RocketMQMessageChannelBinder
 
-默认提供了对RabbitMQ和Apache Kafka的绑定器
+Binding:包括input binding 和 output binding。binding用于连接消息中间件与消息生产者和消费者，开发者只需要使用Provider 或者 Consumer 生产或消费 数据。不必关系使用什么消息中间件
 
 ### Sink-消息监听通道接口
 
 当从消息中间件中接收到一个待处理消息时，该接口将负责把消息数据反序列化为Java对象，然后交由业务所定义的具体业务处理方法进行处理。
-
 
 
 # Nacos
